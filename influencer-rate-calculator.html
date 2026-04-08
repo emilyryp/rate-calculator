@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Influencer Rate Calculator</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; color: #1a1a1a; background: #fff; padding: 24px; max-width: 680px; }
+  h1 { font-size: 18px; font-weight: 600; margin-bottom: 4px; color: #111; }
+  .subtitle { font-size: 13px; color: #666; margin-bottom: 24px; }
+  .section-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.06em; margin: 0 0 8px; font-weight: 600; }
+  .platform-card { background: #fff; border: 1px solid #e5e5e5; border-radius: 10px; padding: 16px 18px; margin-bottom: 12px; transition: opacity 0.2s; }
+  .platform-card.disabled { opacity: 0.4; }
+  .platform-header { display: flex; align-items: center; gap: 10px; margin-bottom: 0; }
+  .platform-header.open { margin-bottom: 14px; }
+  .platform-toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }
+  .toggle-box { width: 36px; height: 20px; border-radius: 10px; background: #e0e0e0; border: none; position: relative; transition: background 0.2s; cursor: pointer; flex-shrink: 0; }
+  .toggle-box.on { background: #1D9E75; }
+  .toggle-knob { width: 14px; height: 14px; border-radius: 50%; background: #fff; position: absolute; top: 3px; left: 3px; transition: left 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+  .toggle-box.on .toggle-knob { left: 19px; }
+  .platform-name { font-size: 15px; font-weight: 600; color: #111; }
+  .field-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .field-row label { font-size: 13px; color: #555; min-width: 100px; }
+  .field-row input[type=number] { width: 130px; padding: 6px 10px; font-size: 13px; border: 1px solid #ddd; border-radius: 6px; background: #fafafa; color: #111; outline: none; }
+  .field-row input[type=number]:focus { border-color: #1D9E75; background: #fff; }
+  .field-row input[type=range] { flex: 1; max-width: 200px; accent-color: #1D9E75; }
+  .eng-val { font-size: 13px; font-weight: 600; color: #111; min-width: 42px; }
+  .del-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; margin: 10px 0 7px; }
+  .deliverables-grid { display: flex; gap: 7px; flex-wrap: wrap; }
+  .del-btn { padding: 5px 11px; font-size: 12px; border: 1px solid #ddd; border-radius: 20px; cursor: pointer; background: #f5f5f5; color: #555; transition: all 0.15s; user-select: none; font-weight: 500; }
+  .del-btn.active { background: #E1F5EE; border-color: #1D9E75; color: #085041; }
+  .their-rate-section { margin-top: 20px; }
+  .their-rate-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+  .their-rate-row label { font-size: 13px; color: #555; }
+  .their-rate-row input { width: 120px; padding: 7px 10px; font-size: 14px; border: 1px solid #ddd; border-radius: 6px; background: #fafafa; color: #111; outline: none; }
+  .their-rate-row input:focus { border-color: #1D9E75; background: #fff; }
+  .result-card { background: #f8f8f8; border-radius: 10px; padding: 18px 20px; margin-top: 20px; border: 1px solid #e5e5e5; }
+  .result-range { font-size: 30px; font-weight: 700; color: #111; margin: 4px 0 2px; letter-spacing: -0.5px; }
+  .result-empty { font-size: 20px; color: #bbb; }
+  .verdict { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; margin-top: 8px; }
+  .verdict.good { background: #E1F5EE; color: #085041; }
+  .verdict.negotiate { background: #FFF3CD; color: #7a4f00; }
+  .verdict.decline { background: #FCEBEB; color: #7a1f1f; }
+  .divider { height: 1px; background: #e8e8e8; margin: 14px 0; }
+  .breakdown-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; font-size: 13px; color: #666; }
+  .breakdown-row span:last-child { color: #111; font-weight: 600; }
+  .compare-result { margin-top: 10px; font-size: 13px; color: #555; min-height: 18px; }
+  .compare-result strong { color: #111; }
+  .note { font-size: 11px; color: #aaa; margin-top: 12px; line-height: 1.6; }
+</style>
+</head>
+<body>
+
+<h1>Influencer Rate Calculator</h1>
+<p class="subtitle">Estimate a fair rate range based on MyScript influencer benchmarks.</p>
+
+<p class="section-label">Platforms &amp; deliverables</p>
+
+<div id="platforms-container"></div>
+
+<div class="their-rate-section">
+  <p class="section-label">Influencer's quoted rate</p>
+  <div class="their-rate-row">
+    <label>Their rate ($)</label>
+    <input type="number" id="their-rate" placeholder="e.g. 800" min="0" oninput="recalc()">
+  </div>
+</div>
+
+<div class="result-card" id="result-card">
+  <p class="section-label" style="margin:0 0 4px;">Estimated fair range</p>
+  <div class="result-range" id="range-display"><span class="result-empty">—</span></div>
+  <div id="verdict-display"></div>
+  <div class="divider"></div>
+  <div id="breakdown"></div>
+  <div class="compare-result" id="compare-result"></div>
+  <p class="note">Based on avg CPM, cost-per-deliverable, and engagement multipliers from 15 MyScript influencer deals. Range reflects low-to-high engagement pricing.</p>
+</div>
+
+<script>
+const PLATFORMS = [
+  { id: 'ig', name: 'Instagram' },
+  { id: 'tt', name: 'TikTok' },
+  { id: 'yt', name: 'YouTube' },
+];
+
+const DELIVERABLES = {
+  ig: ['Reel', 'Story set', 'Carousel'],
+  tt: ['Reel'],
+  yt: ['Reel / Short'],
+};
+
+const state = {
+  ig: { on: true, followers: '', engRate: 3.0, deliverables: { Reel: 1, 'Story set': 0, Carousel: 0 } },
+  tt: { on: false, followers: '', engRate: 8.0, deliverables: { Reel: 0 } },
+  yt: { on: false, followers: '', engRate: 4.0, deliverables: { 'Reel / Short': 0 } },
+};
+
+const BASE_CPM = { ig: 12, tt: 9, yt: 14 };
+const DEL_BASE = { ig: { Reel: 180, 'Story set': 60, Carousel: 80 }, tt: { Reel: 160 }, yt: { 'Reel / Short': 220 } };
+const ENG_BONUS_LOW = 0.85, ENG_BONUS_HIGH = 1.35;
+const ENG_THRESHOLDS = { ig: [1.5, 4.0], tt: [8.0, 18.0], yt: [3.0, 7.0] };
+
+function renderPlatforms() {
+  const c = document.getElementById('platforms-container');
+  c.innerHTML = '';
+  PLATFORMS.forEach(p => {
+    const s = state[p.id];
+    const dels = DELIVERABLES[p.id];
+    const engMin = p.id === 'tt' ? 1 : 0.1;
+    const engMax = p.id === 'tt' ? 30 : p.id === 'yt' ? 15 : 10;
+
+    const card = document.createElement('div');
+    card.className = 'platform-card' + (s.on ? '' : ' disabled');
+
+    card.innerHTML = `
+      <div class="platform-header ${s.on ? 'open' : ''}">
+        <div class="platform-toggle" onclick="togglePlatform('${p.id}')">
+          <div class="toggle-box ${s.on ? 'on' : ''}"><div class="toggle-knob"></div></div>
+          <span class="platform-name">${p.name}</span>
+        </div>
+      </div>
+      ${s.on ? `
+      <div class="field-row">
+        <label>Followers</label>
+        <input type="number" value="${s.followers}" placeholder="e.g. 150000" oninput="state['${p.id}'].followers=this.value;recalc()">
+      </div>
+      <div class="field-row">
+        <label>Engagement %</label>
+        <input type="range" min="${engMin}" max="${engMax}" step="0.1" value="${s.engRate}" oninput="state['${p.id}'].engRate=parseFloat(this.value);document.getElementById('eng-${p.id}').textContent=parseFloat(this.value).toFixed(1)+'%';recalc()">
+        <span class="eng-val" id="eng-${p.id}">${s.engRate.toFixed(1)}%</span>
+      </div>
+      <div class="del-label">Deliverables</div>
+      <div class="deliverables-grid">
+        ${dels.map(d => `<div class="del-btn ${s.deliverables[d] > 0 ? 'active' : ''}" onclick="toggleDel('${p.id}','${d}')">${s.deliverables[d] > 0 ? s.deliverables[d] + 'x ' : ''}${d}</div>`).join('')}
+      </div>
+      ` : ''}
+    `;
+    c.appendChild(card);
+  });
+}
+
+function togglePlatform(pid) {
+  state[pid].on = !state[pid].on;
+  if (state[pid].on) {
+    Object.keys(state[pid].deliverables).forEach(d => {
+      if (d === 'Reel' || d === 'Reel / Short') state[pid].deliverables[d] = 1;
+    });
+  }
+  renderPlatforms();
+  recalc();
+}
+
+function toggleDel(pid, del) {
+  const cur = state[pid].deliverables[del];
+  state[pid].deliverables[del] = cur >= 3 ? 0 : cur + 1;
+  renderPlatforms();
+  recalc();
+}
+
+function calcPlatformRange(pid) {
+  const s = state[pid];
+  if (!s.on) return { low: 0, high: 0, delCount: 0 };
+  const followers = parseFloat(s.followers) || 0;
+  const eng = s.engRate;
+  const [eLow, eHigh] = ENG_THRESHOLDS[pid];
+  const engMult = eng < eLow ? ENG_BONUS_LOW : eng > eHigh ? ENG_BONUS_HIGH : 1.0 + ((eng - eLow) / (eHigh - eLow)) * (ENG_BONUS_HIGH - ENG_BONUS_LOW);
+
+  let delBase = 0, delCount = 0;
+  Object.entries(s.deliverables).forEach(([d, cnt]) => {
+    if (cnt > 0) { delBase += DEL_BASE[pid][d] * cnt; delCount += cnt; }
+  });
+  if (delCount === 0) return { low: 0, high: 0, delCount: 0 };
+
+  const cpmBase = followers > 0 ? (followers / 1000) * BASE_CPM[pid] * 0.08 : 0;
+  const base = delBase + cpmBase;
+  const low = Math.round(base * ENG_BONUS_LOW * engMult * 0.85);
+  const high = Math.round(base * ENG_BONUS_HIGH * engMult * 1.1);
+  return { low, high, delCount };
+}
+
+function recalc() {
+  let totalLow = 0, totalHigh = 0;
+  let hasDeliverables = false;
+  const rows = [];
+
+  PLATFORMS.forEach(p => {
+    const r = calcPlatformRange(p.id);
+    if (r.delCount > 0) {
+      totalLow += r.low; totalHigh += r.high;
+      hasDeliverables = true;
+      rows.push({ name: p.name, low: r.low, high: r.high });
+    }
+  });
+
+  const rangeEl = document.getElementById('range-display');
+  const verdictEl = document.getElementById('verdict-display');
+  const breakdownEl = document.getElementById('breakdown');
+  const compareEl = document.getElementById('compare-result');
+
+  if (!hasDeliverables) {
+    rangeEl.innerHTML = '<span class="result-empty">—</span>';
+    verdictEl.innerHTML = ''; breakdownEl.innerHTML = ''; compareEl.innerHTML = '';
+    return;
+  }
+
+  rangeEl.textContent = '$' + totalLow.toLocaleString() + ' – $' + totalHigh.toLocaleString();
+
+  const theirRate = parseFloat(document.getElementById('their-rate').value);
+  if (!isNaN(theirRate) && theirRate > 0) {
+    if (theirRate <= totalLow * 0.85) {
+      verdictEl.innerHTML = '<span class="verdict good">Great deal — accept</span>';
+      compareEl.innerHTML = 'Their rate is well below the fair range.';
+    } else if (theirRate <= totalHigh * 1.05) {
+      verdictEl.innerHTML = '<span class="verdict good">Within fair range</span>';
+      compareEl.innerHTML = 'Their rate fits your benchmarks.';
+    } else if (theirRate <= totalHigh * 1.35) {
+      verdictEl.innerHTML = '<span class="verdict negotiate">Slightly high — negotiate</span>';
+      compareEl.innerHTML = 'Consider countering around <strong>$' + Math.round(totalHigh * 0.95).toLocaleString() + '</strong>.';
+    } else {
+      verdictEl.innerHTML = '<span class="verdict decline">Over budget — push back</span>';
+      compareEl.innerHTML = 'Rate is significantly above the estimated range. Negotiate firmly or pass.';
+    }
+  } else {
+    verdictEl.innerHTML = ''; compareEl.innerHTML = '';
+  }
+
+  let bHTML = '';
+  if (rows.length > 1) {
+    rows.forEach(r => {
+      bHTML += '<div class="breakdown-row"><span>' + r.name + '</span><span>$' + r.low.toLocaleString() + ' – $' + r.high.toLocaleString() + '</span></div>';
+    });
+  }
+  breakdownEl.innerHTML = bHTML;
+}
+
+renderPlatforms();
+recalc();
+</script>
+</body>
+</html>
